@@ -1,5 +1,6 @@
-# config.py
+# bcalctracker/config.py
 
+import sys
 from pathlib import Path
 
 # 1. Import GUI Styling Constants
@@ -23,17 +24,34 @@ from data_loaders import (
 APP_NAME = "Bcalc Firearm Management"
 VERSION = "v1.0"
 
-# Paths
-BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / "datadb"
-#BACKUP_DIR = DATA_DIR / "backups"
+# --- PATH LOGIC UPDATE START ---
+
+# Determine Base Directory
+if hasattr(sys, '_MEIPASS'):
+    # Running as PyInstaller Executable
+    BASE_DIR = Path(sys._MEIPASS)
+else:
+    # Running as Python Script
+    BASE_DIR = Path(__file__).parent.resolve()
+
+# Define ASSET_DIR for Read-Only files (CSVs, Icons)
+ASSET_DIR = BASE_DIR
+
+# Define USER_DATA_DIR for Writable files (Database, Backups)
+USER_HOME = Path.home()
+USER_DATA_ROOT = USER_HOME / ".bcalctracker"
+DATA_DIR = USER_DATA_ROOT
+BACKUP_DIR = USER_DATA_ROOT / "backups"
+
+# Define Database Path
 DB_PATH = DATA_DIR / "firearms.db"
 
-# Ensure directories exist
-DATA_DIR.mkdir(exist_ok=True)
-#BACKUP_DIR.mkdir(exist_ok=True)
+# Ensure directories exist (creates ~/.bcalctracker if missing)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+
+# --- PATH LOGIC UPDATE END ---
 
 # Business Logic Defaults
-
 PERFORMANCE_RATINGS = ["Bad", "Adequate", "Good", "Great"]
 
