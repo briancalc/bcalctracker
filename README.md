@@ -27,7 +27,6 @@ Hunters and hobbyists who prefer open-source applications. It's easy to track yo
 ### 1. Linux (standalone application - no python installation required)
 
 - download "bcalctracker" from the https://github.com/briancalc/bcalctracker/releases page
-- open a terminal in the download folder and make the file executable using chmod +x bcalctracker
 - to run using file manager, double click bcalctracker
 - to run from the terminal ./bcalctracker
 
