@@ -103,11 +103,9 @@ Your current database will be replaced by the backup so be certain you want to r
 
 ## 5. Credits & License
 
-I'm not a software developer. The goal was to continue my python learning progress while producing something useful, at least for me. This application is offered for educational and entertainment purposes.
+I'm not a software developer. The goal is to continue my python learning progress while producing something useful, at least for me. This application is offered for educational and entertainment purposes.
 
 The Bcalc Firearm Management App was created by Brian Calc.
-
-Plan is to continue to refine the application code and add new functionality. Suggestions for improvements are welcome.
 
 GNU General Public License (GPL) Version 3.
 
