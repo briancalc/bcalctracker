@@ -1,0 +1,5 @@
+#.gitignore
+
+backups/
+venvtracker/
+datadb/
