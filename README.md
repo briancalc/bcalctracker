@@ -16,7 +16,7 @@ The Bcalc Firearm Management App is an open-source firearm, optics, and ammuniti
 
 You can enter multiple configurations of firearms, optics, and ammunition. For each configuration, you can track range session performance and conditions. Data reports such as rounds per firearm and top configurations by caliber are available.
 
-An internet connection is not required once installed. No user data is collected or transmitted.
+An internet connection is not required once installed. No user data is transmitted.
 
 ## 2. Who is this for?
 
@@ -102,8 +102,6 @@ Your current database will be replaced by the backup so be certain you want to r
 ![Step 8C](screenshots/step8c.png)
 
 ## 5. Credits & License
-
-I'm not a software developer. The goal is to continue my python learning progress while producing something useful, at least for me. This application is offered for educational and entertainment purposes.
 
 The Bcalc Firearm Management App was created by Brian Calc.
 
