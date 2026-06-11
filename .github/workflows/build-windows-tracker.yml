@@ -16,9 +16,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4.2.0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5.2.0
-        with:
+      - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+          auto-activate-base: true
           python-version: '3.11'
 
       - name: Install build tools
