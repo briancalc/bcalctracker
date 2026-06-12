@@ -27,9 +27,6 @@ class BackupManager:
         Args:
             data_root: Path to <Project>/datadb folder (contains .db and .auth)
             backups_path: Path to store backups (defaults to <Project>/backups)
-
-        NOTE: This class does NOT create directories.
-                Ensure 'data_root' and 'backups_path' exist before calling methods.
         """
         self.data_root = Path(data_root).resolve()
 
@@ -40,12 +37,12 @@ class BackupManager:
             # Assumes parent of datadb is the project root, so sibling 'backups' exists
             self.backups_path = self.data_root.parent / "backups"
 
-        # DEBUG INFO ONLY - NO CREATION HERE
+
         print(f"[DEBUG] BackupManager initialized. Data: {self.data_root}, Backups: {self.backups_path}")
 
     def create_backup(self, password: str) -> Tuple[bool, str]:
         try:
-            # Check existence instead of creating
+
             if not self.data_root.exists():
                 error_msg = f"Data root folder not found: {self.data_root}"
                 print(f"[ERROR] {error_msg}")
