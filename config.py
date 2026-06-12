@@ -24,34 +24,25 @@ from data_loaders import (
 APP_NAME = "Bcalc Firearm Management"
 VERSION = "v1.0"
 
-# --- PATH LOGIC UPDATE START ---
+# --- RESTORED PATH LOGIC ---
 
-# Determine Base Directory
-if hasattr(sys, '_MEIPASS'):
-    # Running as PyInstaller Executable
-    BASE_DIR = Path(sys._MEIPASS)
-else:
-    # Running as Python Script
-    BASE_DIR = Path(__file__).parent.resolve()
+# 1. Define Project Root (Where starttracker.py lives)
+SCRIPT_DIR = Path(__file__).resolve().parent
 
-# Define ASSET_DIR for Read-Only files (CSVs, Icons)
-ASSET_DIR = BASE_DIR
+# 2. Define Data Directory INSIDE the project root
+# This creates: <Project Folder>/datadb/
+DATA_DIR = SCRIPT_DIR / "datadb"
 
-# Define USER_DATA_DIR for Writable files (Database, Backups)
-USER_HOME = Path.home()
-USER_DATA_ROOT = USER_HOME / ".bcalctracker"
-DATA_DIR = USER_DATA_ROOT
-BACKUP_DIR = USER_DATA_ROOT / "backups"
+# 3. Define Backup Directory INSIDE the project root
+# This creates: <Project Folder>/backups/
+BACKUP_DIR = SCRIPT_DIR / "backups"
 
-# Define Database Path
+# 4. Define Database Path
 DB_PATH = DATA_DIR / "firearms.db"
 
-# Ensure directories exist (creates ~/.bcalctracker if missing)
+# 5. Create directories if they don't exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
-# --- PATH LOGIC UPDATE END ---
-
 # Business Logic Defaults
 PERFORMANCE_RATINGS = ["Bad", "Adequate", "Good", "Great"]
-

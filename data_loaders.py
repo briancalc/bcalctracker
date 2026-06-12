@@ -17,7 +17,6 @@ CSV_FILES = {
     'ammo_types': DATA_MENU_DIR / 'ammotype.csv',
     'ammo_use_cases': DATA_MENU_DIR / 'ammouse.csv',
     'range_results': DATA_MENU_DIR / 'rangeresults.csv',
-    # New CSV files for Ammo Form expansion
     'shot_sizes': DATA_MENU_DIR / 'shotsize.csv',
     'projectile_types': DATA_MENU_DIR / 'projectiletype.csv',
     'brass_mfg': DATA_MENU_DIR / 'brassmfg.csv',
