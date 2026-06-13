@@ -1,4 +1,3 @@
-bcrypt
 charset-normalizer
 contourpy
 cycler
@@ -12,9 +11,7 @@ pandas
 pillow
 pip
 pyparsing
-pysqlcipher3
 python-dateutil
-pyzipper
 reportlab
 six
 ttkbootstrap

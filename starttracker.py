@@ -1,5 +1,7 @@
 # starttracker.py
 
+# starttracker.py
+
 import sys
 from pathlib import Path
 from typing import Callable, Optional, Type
@@ -10,20 +12,18 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # 2. Import Configuration
-from config import APP_NAME, VERSION, DATA_DIR #BACKUP_DIR
+from config import APP_NAME, VERSION, DATA_DIR
 
 
 def ensure_directories() -> None:
     """Ensure required directories exist."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    #BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class WindowManager:
     """Manages window switching with proper cleanup."""
 
     def __init__(self, root) -> None:
-
         self.root = root
         self.container = None
         self.current_window: Optional[object] = None
@@ -35,7 +35,6 @@ class WindowManager:
         self.container.pack(fill="both", expand=True)
 
     def show_window(self, window_class: Type, **kwargs) -> object:
-
         # Cleanup previous window
         if self.current_window is not None:
             if hasattr(self.current_window, 'cleanup'):
@@ -60,7 +59,6 @@ def main() -> None:
 
     # Import GUI modules
     import ttkbootstrap as ttk
-    from guiform.login import LoginWindow
     from guiform.main_window import MainWindow
 
     # Create the root window
@@ -71,17 +69,8 @@ def main() -> None:
     manager = WindowManager(root)
     manager.setup_container()
 
-    # Define window navigation callbacks
-    def show_main(password: str) -> None:
-        """Display the main application window with the database password."""
-        manager.show_window(MainWindow, password=password)
-
-    def show_login() -> None:
-
-        manager.show_window(LoginWindow, on_success=show_main)
-
-    print(">>> Initializing Login Window...")
-    show_login()
+    # Launch main window directly (no login)
+    manager.show_window(MainWindow)
 
     # Start the application loop
     root.mainloop()

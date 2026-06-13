@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://briancalc.github.io/bcalctracker
+/sitemap.xml

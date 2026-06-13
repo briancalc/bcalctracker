@@ -33,9 +33,9 @@ from guiform.constants import (
 class MainWindow:
     """Main application window with tabbed interface for firearm management."""
 
-    def __init__(self, root, password: str):
+    def __init__(self, root):
         self.root = root
-        self.password = password
+        # REMOVED: self.password
 
         self._reports_refresh_timer = None
 
@@ -54,10 +54,10 @@ class MainWindow:
         self.style.theme_use("litera")
         self._setup_custom_styles()
 
-        # Initialize Database Connection FIRST
+        # Initialize Database Connection (NO PASSWORD NEEDED)
         try:
-            if not db_manager.connect(password):
-                messagebox.showerror(self.root, "Database Error", "Failed to unlock database. Incorrect password or corrupted file.")
+            if not db_manager.connect():
+                messagebox.showerror(self.root, "Database Error", "Failed to connect to database.")
                 self.root.quit()
                 return
         except Exception as e:
@@ -69,7 +69,6 @@ class MainWindow:
         self.create_widgets()
 
     def _load_quail_icon(self) -> None:
-
         try:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             icon_path = os.path.join(script_dir, "bcalcnotepadicon.png")
@@ -202,7 +201,15 @@ class MainWindow:
                                            activebackground=COLOR_GRAY)
 
             # --- Text Definitions ---
-            help_text = "1. Add a firearm record with as much data as you'd like.\n\n2. Optional:  add optic and ammunition.\n\n3. Create a configuration which consists of a firearm and optic (optional) and ammuntion (optional).  Firearms can be associated with multiple optic and/or ammunition records and vice versa.\n\n4. Enter range session information.  Key field is the configuration.\n\n5. Report tab tracks various data.\n\n**Don't misplace your password as no recovery option.**"
+            help_text = (
+                "1. Add a firearm record with as much data as you'd like.\n\n"
+                "2. Optional:  add optic and ammunition.\n\n"
+                "3. Create a configuration which consists of a firearm and optic (optional) and ammuntion (optional).  "
+                "Firearms can be associated with multiple optic and/or ammunition records and vice versa.\n\n"
+                "4. Enter range session information.  Key field is the configuration.\n\n"
+                "5. Report tab tracks various data.\n\n"
+                "Your data is stored locally on your device."
+            )
             about_text = (
                 "1. What is this?\n"
                 "The Bcalc Firearm Management App v1.0 is an open-source firearm, optics, and ammunition tracker with no cloud-based services or subscriptions.\n\n"
@@ -266,28 +273,21 @@ class MainWindow:
                 except:
                     pass
 
-            # Verify database connection and password
+            # Verify database connection
             if db_manager.conn is None:
                 print("[ERROR] No active database connection")
-                messagebox.showerror(self.root, "Error", "No active database connection. Please connect to the database first.")
+                messagebox.showerror(self.root, "Error", "No active database connection.")
                 return
-
-            if db_manager._password is None:
-                print("[ERROR] Database password not available")
-                messagebox.showerror(self.root, "Error", "Database password not available.")
-                return
-
-            password = db_manager._password
 
             # Use the SAME datadb path as the database manager
-            # db_manager.db_path is the .db file, so .parent gives us the datadb folder
             datadb_path = db_manager.db_path.parent
 
             print(f"[DEBUG] Starting backup process...")
             print(f"[DEBUG] Datadb path: {datadb_path}")
 
             backup_mgr = BackupManager(datadb_path)
-            success, message = backup_mgr.create_backup(password)
+            # CHANGED: No password passed
+            success, message = backup_mgr.create_backup()
 
             if success:
                 print(f"[DEBUG] Backup successful")
@@ -351,22 +351,52 @@ class MainWindow:
                 print("[DEBUG] Restore cancelled by user confirmation")
                 return
 
-            # Verify database connection and password
+            # Verify database connection
             if db_manager.conn is None:
                 print("[ERROR] No active database connection")
                 messagebox.showerror(self.root, "Error", "No active database connection.")
                 return
 
-            if db_manager._password is None:
-                print("[ERROR] Database password not available")
-                messagebox.showerror(self.root, "Error", "Database password not available.")
+            # Use the SAME datadb path as the database manager
+            datadb_path = db_manager.db_path.parent
+
+            print(f"[DEBUG] Starting restore process...")
+            print(f"[DEBUG] Datadb path: {datadb_path}")
+
+            backup_mgr = BackupManager(datadb_path)
+            backups = backup_mgr.list_backups()
+
+            if not backups:
+                print("[WARNING] No backups found")
+                messagebox.showwarning(self.root, "No Backups", "No backups found. Please create a backup first.")
                 return
 
-            password = db_manager._password
+            # Build list for dialog
+            backup_list = []
+            for backup in backups:
+                filename, info = backup_mgr.get_backup_info(backup)
+                backup_list.append((backup, filename, info))
 
-            # Perform restore
+            print(f"[DEBUG] Showing backup selection dialog with {len(backup_list)} backups")
+
+            # Show backup selection dialog
+            from guiform.custom_dialogs import BackupListDialog
+            selected_backup = BackupListDialog(self.root, "Restore from Backup", backup_list).show()
+
+            if not selected_backup:
+                print("[DEBUG] Restore cancelled by user")
+                return
+
+            # Show confirmation warning
+            confirm_msg = "Warning: Will overwrite current database!\n\nContinue?"
+
+            if not messagebox.askyesno(self.root, "Confirm Restore", confirm_msg):
+                print("[DEBUG] Restore cancelled by user confirmation")
+                return
+
+            # Perform restore (CHANGED: No password passed)
             print(f"[DEBUG] Restoring from: {selected_backup}")
-            success, message = backup_mgr.restore_backup(selected_backup, password)
+            success, message = backup_mgr.restore_backup(selected_backup)
 
             if success:
                 print("[DEBUG] Restore successful - restarting application")
@@ -1496,5 +1526,5 @@ class MainWindow:
 
 if __name__ == "__main__":
     root = ttk.Tk()
-    app = MainWindow(root, "testpassword")
+    app = MainWindow(root)
     root.mainloop()

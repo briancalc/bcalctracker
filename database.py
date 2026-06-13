@@ -6,47 +6,53 @@ from typing import Optional, List, Dict, Any
 from config import DB_PATH
 
 
-try:
-    import pysqlcipher3.dbapi2 as sqlcipher
-except ImportError:
-    raise ImportError("pysqlcipher3 is required. Install with: pip install pysqlcipher3")
-
-
 class DatabaseManager:
     """Manages the encrypted database connection and operations."""
 
     def __init__(self, db_path: Path = DB_PATH):
         self.db_path = db_path
-        self.conn: Optional[sqlcipher.Connection] = None
-        self._password: Optional[str] = None
+        self.conn: Optional[sqlite3.Connection] = None
 
-    def connect(self, password: str) -> bool:
-        """Establish a connection to the SQLCipher database."""
+    def connect(self) -> bool:
+        """Establish a connection to the standard SQLite database."""
         try:
             # Ensure directory exists
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             print(f"[DEBUG] Connecting to: {self.db_path}")
             print(f"[DEBUG] File exists before connect: {self.db_path.exists()}")
 
-            # Connect
-            self.conn = sqlcipher.connect(str(self.db_path))
+            # Connect (Standard SQLite)
+            self.conn = sqlite3.connect(str(self.db_path))
             cursor = self.conn.cursor()
             print("[DEBUG] Connection object created.")
 
-            # Set Key
-            escaped_pwd = password.replace("'", "''")
-            cursor.execute(f"PRAGMA key = '{escaped_pwd}'")
-            print("[DEBUG] PRAGMA key executed.")
+            # Enable Foreign Keys immediately
+            cursor.execute("PRAGMA foreign_keys = ON")
 
-            # VERIFY: Must read from sqlite_master to force decryption check
-            try:
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1")
-                result = cursor.fetchone()
-                print(f"[DEBUG] Verification query result: {result}")
-            except Exception as e:
-                print(f"[DEBUG] VERIFICATION FAILED: {e}")
+            # Check if tables exist to decide between creation or migration
+            if not self._table_exists(cursor, 'firearms'):
+                print("[DEBUG] No tables found. Creating schema...")
+                self._create_schema(cursor)
+                self.conn.commit()
+                print("[DEBUG] Schema created.")
+            else:
+                print("[DEBUG] Schema exists.")
+                # Run migrations if table exists but might be old
+                print("[DEBUG] Checking for migrations...")
+                self._run_migrations(cursor)
+                self.conn.commit()
+                print("[DEBUG] Migrations complete.")
+
+            print("[DEBUG] SUCCESS: Database connected.")
+            return True
+
+        except Exception as e:
+            print(f"[DEBUG] CRITICAL ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            if self.conn:
                 self.close()
-                return False
+            return False
 
             # Create Schema if new
             if not self._table_exists(cursor, 'firearms'):
@@ -89,113 +95,114 @@ class DatabaseManager:
         return column_name in columns
 
 #===================================================
-    def _run_migrations(self, cursor: sqlcipher.Cursor) -> None:
-        """Run database migrations to add new columns if they don't exist."""
-        migrations = [
-            # --- Configurations ---
-            ('configurations', 'firearm_id', 'INTEGER NOT NULL'),
-            ('configurations', 'optic_id', 'INTEGER'),
-            ('configurations', 'ammo_id', 'INTEGER'),
-            ('configurations', 'config_notes', 'TEXT'),
-            ('configurations', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+    def _run_migrations(self, cursor: sqlite3.Cursor) -> None:
+            """Run database migrations to add new columns if they don't exist."""
+            migrations = [
+                # --- Configurations ---
+                ('configurations', 'firearm_id', 'INTEGER NOT NULL'),
+                ('configurations', 'optic_id', 'INTEGER'),
+                ('configurations', 'ammo_id', 'INTEGER'),
+                ('configurations', 'config_notes', 'TEXT'),
+                ('configurations', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
 
-            # --- Firearms ---
-            ('firearms', 'name', 'TEXT'),
-            ('firearms', 'mfg', 'TEXT NOT NULL'),
-            ('firearms', 'firearm_type', 'TEXT NOT NULL'),
-            ('firearms', 'serial_number', 'TEXT UNIQUE'),
-            ('firearms', 'caliber_primary', 'TEXT'),
-            ('firearms', 'caliber_secondary', 'TEXT'),
-            ('firearms', 'barrel_length', 'REAL'),
-            ('firearms', 'purchase_date', 'TEXT'),
-            ('firearms', 'purchase_location', 'TEXT'),
-            ('firearms', 'purchase_price', 'REAL'),
-            ('firearms', 'sold_date', 'TEXT'),
-            ('firearms', 'sold_buyer', 'TEXT'),
-            ('firearms', 'sold_price', 'REAL'),
-            ('firearms', 'notes', 'TEXT'),
-            ('firearms', 'photo_path', 'TEXT'),
-            ('firearms', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
-            ('firearms', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+                # --- Firearms ---
+                ('firearms', 'name', 'TEXT'),
+                ('firearms', 'mfg', 'TEXT NOT NULL'),
+                ('firearms', 'firearm_type', 'TEXT NOT NULL'),
+                ('firearms', 'serial_number', 'TEXT UNIQUE'),
+                ('firearms', 'caliber_primary', 'TEXT'),
+                ('firearms', 'caliber_secondary', 'TEXT'),
+                ('firearms', 'barrel_length', 'REAL'),
+                ('firearms', 'purchase_date', 'TEXT'),
+                ('firearms', 'purchase_location', 'TEXT'),
+                ('firearms', 'purchase_price', 'REAL'),
+                ('firearms', 'sold_date', 'TEXT'),
+                ('firearms', 'sold_buyer', 'TEXT'),
+                ('firearms', 'sold_price', 'REAL'),
+                ('firearms', 'notes', 'TEXT'),
+                ('firearms', 'photo_path', 'TEXT'),
+                ('firearms', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+                ('firearms', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
 
-            # --- Optics ---
-            ('optics', 'mfg', 'TEXT NOT NULL'),
-            ('optics', 'optic_type', 'TEXT NOT NULL'),
-            ('optics', 'model', 'TEXT'),
-            ('optics', 'notes', 'TEXT'),
-            ('optics', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+                # --- Optics ---
+                ('optics', 'mfg', 'TEXT NOT NULL'),
+                ('optics', 'optic_type', 'TEXT NOT NULL'),
+                ('optics', 'model', 'TEXT'),
+                ('optics', 'notes', 'TEXT'),
+                ('optics', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
 
-        # --- Ammo Loads ---
-            ('ammo_loads', 'mfg', 'TEXT NOT NULL'),
-            ('ammo_loads', 'caliber', 'TEXT NOT NULL'),
-            ('ammo_loads', 'ammo_name', 'TEXT'),
-            ('ammo_loads', 'use_case', 'TEXT'),
-            ('ammo_loads', 'grains', 'REAL'),
-            ('ammo_loads', 'bullet_name', 'TEXT'),
-            ('ammo_loads', 'bullet_mfg', 'TEXT'),
-            ('ammo_loads', 'drag_function', 'TEXT'),
-            ('ammo_loads', 'ballistic_coeff', 'REAL'),
-            ('ammo_loads', 'do_not_rebuy', 'INTEGER DEFAULT 0'),
-            ('ammo_loads', 'notes', 'TEXT'),
-            ('ammo_loads', 'projectile_type', 'TEXT'),
-            ('ammo_loads', 'shot_size', 'TEXT'),
-            ('ammo_loads', 'pellet_count', 'INTEGER'),
-            ('ammo_loads', 'brass_mfg', 'TEXT'),
-            ('ammo_loads', 'hull_mfg', 'TEXT'),
-            ('ammo_loads', 'wad_mfg', 'TEXT'),
-            ('ammo_loads', 'powder_mfg', 'TEXT'),
-            ('ammo_loads', 'powder_name', 'TEXT'),
-            ('ammo_loads', 'powder_lot', 'TEXT'),
-            ('ammo_loads', 'powder_grains', 'REAL'),
-            ('ammo_loads', 'primer_mfg', 'TEXT'),
-            ('ammo_loads', 'primer_type', 'TEXT'),
-            ('ammo_loads', 'primer_lot', 'TEXT'),
-            ('ammo_loads', 'case_weight', 'REAL'),
-            ('ammo_loads', 'overall_length', 'REAL'),
-            ('ammo_loads', 'cbto', 'REAL'),
-            ('ammo_loads', 'crimp_type', 'TEXT'),
-            ('ammo_loads', 'date_loaded', 'TEXT'),
-            ('ammo_loads', 'batch_quantity', 'INTEGER'),
-            ('ammo_loads', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
-            ('ammo_loads', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+                # --- Ammo Loads ---
+                ('ammo_loads', 'mfg', 'TEXT NOT NULL'),
+                ('ammo_loads', 'caliber', 'TEXT NOT NULL'),
+                ('ammo_loads', 'ammo_name', 'TEXT'),
+                ('ammo_loads', 'use_case', 'TEXT'),
+                ('ammo_loads', 'grains', 'REAL'),
+                ('ammo_loads', 'bullet_name', 'TEXT'),
+                ('ammo_loads', 'bullet_mfg', 'TEXT'),
+                ('ammo_loads', 'drag_function', 'TEXT'),
+                ('ammo_loads', 'ballistic_coeff', 'REAL'),
+                ('ammo_loads', 'do_not_rebuy', 'INTEGER DEFAULT 0'),
+                ('ammo_loads', 'notes', 'TEXT'),
+                ('ammo_loads', 'projectile_type', 'TEXT'),
+                ('ammo_loads', 'shot_size', 'TEXT'),
+                ('ammo_loads', 'pellet_count', 'INTEGER'),
+                ('ammo_loads', 'brass_mfg', 'TEXT'),
+                ('ammo_loads', 'hull_mfg', 'TEXT'),
+                ('ammo_loads', 'wad_mfg', 'TEXT'),
+                ('ammo_loads', 'powder_mfg', 'TEXT'),
+                ('ammo_loads', 'powder_name', 'TEXT'),
+                ('ammo_loads', 'powder_lot', 'TEXT'),
+                ('ammo_loads', 'powder_grains', 'REAL'),
+                ('ammo_loads', 'primer_mfg', 'TEXT'),
+                ('ammo_loads', 'primer_type', 'TEXT'),
+                ('ammo_loads', 'primer_lot', 'TEXT'),
+                ('ammo_loads', 'case_weight', 'REAL'),
+                ('ammo_loads', 'overall_length', 'REAL'),
+                ('ammo_loads', 'cbto', 'REAL'),
+                ('ammo_loads', 'crimp_type', 'TEXT'),
+                ('ammo_loads', 'date_loaded', 'TEXT'),
+                ('ammo_loads', 'batch_quantity', 'INTEGER'),
+                ('ammo_loads', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+                ('ammo_loads', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
 
-            # --- Range Sessions ---
-            ('range_sessions', 'configuration_id', 'INTEGER NOT NULL'),
-            ('range_sessions', 'date', 'TEXT NOT NULL'),
-            ('range_sessions', 'location', 'TEXT'),
-            ('range_sessions', 'rounds_fired', 'INTEGER DEFAULT 0'),
-            ('range_sessions', 'target_range', 'REAL'),
-            ('range_sessions', 'wind_speed', 'REAL'),
-            ('range_sessions', 'wind_angle', 'REAL'),
-            ('range_sessions', 'temperature', 'REAL'),
-            ('range_sessions', 'humidity', 'REAL'),
-            ('range_sessions', 'vel_avg', 'REAL'),
-            ('range_sessions', 'vel_max', 'REAL'),
-            ('range_sessions', 'vel_std_dev', 'REAL'),
-            ('range_sessions', 'vel_ext_spread', 'REAL'),
-            ('range_sessions', 'moa_avg', 'REAL'),
-            ('range_sessions', 'moa_best', 'REAL'),
-            ('range_sessions', 'moa_std_dev', 'REAL'),
-            ('range_sessions', 'moa_ext_spread', 'REAL'),
-            ('range_sessions', 'rating', 'TEXT'),
-            ('range_sessions', 'photo_path', 'TEXT'),
-            ('range_sessions', 'notes', 'TEXT'),
-            ('range_sessions', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+                # --- Range Sessions ---
+                ('range_sessions', 'configuration_id', 'INTEGER NOT NULL'),
+                ('range_sessions', 'date', 'TEXT NOT NULL'),
+                ('range_sessions', 'location', 'TEXT'),
+                ('range_sessions', 'rounds_fired', 'INTEGER DEFAULT 0'),
+                ('range_sessions', 'target_range', 'REAL'),
+                ('range_sessions', 'wind_speed', 'REAL'),
+                ('range_sessions', 'wind_angle', 'REAL'),
+                ('range_sessions', 'temperature', 'REAL'),
+                ('range_sessions', 'humidity', 'REAL'),
+                ('range_sessions', 'vel_avg', 'REAL'),
+                ('range_sessions', 'vel_max', 'REAL'),
+                ('range_sessions', 'vel_std_dev', 'REAL'),
+                ('range_sessions', 'vel_ext_spread', 'REAL'),
+                ('range_sessions', 'moa_avg', 'REAL'),
+                ('range_sessions', 'moa_best', 'REAL'),
+                ('range_sessions', 'moa_std_dev', 'REAL'),
+                ('range_sessions', 'moa_ext_spread', 'REAL'),
+                ('range_sessions', 'rating', 'TEXT'),
+                ('range_sessions', 'photo_path', 'TEXT'),
+                ('range_sessions', 'notes', 'TEXT'),
+                ('range_sessions', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
             ]
 
-        for table, column, col_type in migrations:
-            if self._table_exists(cursor, table) and not self._column_exists(cursor, table, column):
-                print(f"[DEBUG] Migrating: Adding column '{column}' to '{table}'...")
-                try:
-                    cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-                    print(f"[DEBUG] Successfully added {column}.")
-                except Exception as e:
-                    print(f"[ERROR] Failed to add {column} to {table}: {e}")
+            for table, column, col_type in migrations:
+                if self._table_exists(cursor, table) and not self._column_exists(cursor, table, column):
+                    print(f"[DEBUG] Migrating: Adding column '{column}' to '{table}'...")
+                    try:
+                        cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                        print(f"[DEBUG] Successfully added {column}.")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to add {column} to {table}: {e}")
+
 
 
 
 #==========================================================
-    def _create_schema(self, cursor: sqlcipher.Cursor) -> None:
+    def _create_schema(self, cursor: sqlite3.Cursor) -> None:
         """Create the database schema."""
 
         # 1. Firearms Table
@@ -676,7 +683,6 @@ class DatabaseManager:
         if self.conn:
             self.conn.close()
             self.conn = None
-            self._password = None
 
 
 

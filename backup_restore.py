@@ -1,48 +1,39 @@
 # backup_restore.py
 
 """
-Backup and restore functionality for encrypted database folder.
-Uses pyzipper for AES-256 encrypted ZIP archives.
-Integrates with database password for encryption.
+Backup and restore functionality for database folder.
+Uses standard zipfile (no encryption).
 """
 import shutil
 import tempfile
+import zipfile
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Tuple
 
-try:
-    import pyzipper
-except ImportError:
-    raise ImportError("pyzipper is required. Install with: pip install pyzipper")
-
 
 class BackupManager:
-    """Manages encrypted backups and restoration of the user data root."""
+    """Manages non-encrypted backups and restoration of the user data root."""
 
     def __init__(self, data_root: Path, backups_path: Optional[Path] = None):
         """
         Initialize BackupManager.
 
         Args:
-            data_root: Path to <Project>/datadb folder (contains .db and .auth)
+            data_root: Path to <Project>/datadb folder (contains .db)
             backups_path: Path to store backups (defaults to <Project>/backups)
         """
         self.data_root = Path(data_root).resolve()
 
-        # Determine backups path relative to data_root if not provided
         if backups_path:
             self.backups_path = Path(backups_path).resolve()
         else:
-            # Assumes parent of datadb is the project root, so sibling 'backups' exists
             self.backups_path = self.data_root.parent / "backups"
-
 
         print(f"[DEBUG] BackupManager initialized. Data: {self.data_root}, Backups: {self.backups_path}")
 
-    def create_backup(self, password: str) -> Tuple[bool, str]:
+    def create_backup(self) -> Tuple[bool, str]:
         try:
-
             if not self.data_root.exists():
                 error_msg = f"Data root folder not found: {self.data_root}"
                 print(f"[ERROR] {error_msg}")
@@ -58,22 +49,17 @@ class BackupManager:
             backup_file = self.backups_path / f"backup_{timestamp}.zip"
             print(f"[DEBUG] Creating backup: {backup_file}")
 
-            # Create encrypted ZIP
-            with pyzipper.AESZipFile(
+            # Create standard ZIP (No encryption)
+            with zipfile.ZipFile(
                 str(backup_file),
                 'w',
-                compression=pyzipper.ZIP_DEFLATED,
-                encryption=pyzipper.WZ_AES
+                compression=zipfile.ZIP_DEFLATED
             ) as zf:
-                zf.setpassword(password.encode('utf-8'))
-
-                # Add all files from data_root EXCEPT the backups folder itself
                 file_count = 0
                 skipped_dirs = ["backups"]
 
                 for file_path in self.data_root.rglob('*'):
                     if file_path.is_file():
-                        # Check if file is inside a skipped directory
                         is_skipped = False
                         rel_path_parts = file_path.relative_to(self.data_root).parts
 
@@ -130,15 +116,10 @@ class BackupManager:
             print(f"[ERROR] Failed to get backup info for {backup_path}: {e}")
             return backup_path.name, "Unknown"
 
-    def restore_backup(self, backup_path: Path, password: str) -> Tuple[bool, str]:
+    def restore_backup(self, backup_path: Path) -> Tuple[bool, str]:
         """
         Restore from a backup (overwrites current data root content).
         Creates a safety backup of current data before restoration.
-
-        ASSUMPTIONS:
-        - backup_path exists
-        - data_root exists and is writable
-        - backups_path exists
         """
         try:
             if not backup_path.exists():
@@ -148,45 +129,35 @@ class BackupManager:
 
             print(f"[DEBUG] Starting restore from: {backup_path}")
 
-            # Create temporary extraction directory
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_path = Path(temp_dir)
 
-                # Extract backup
+                # Extract backup (No password needed)
                 try:
-                    with pyzipper.AESZipFile(str(backup_path), 'r') as zf:
-                        zf.setpassword(password.encode('utf-8'))
+                    with zipfile.ZipFile(str(backup_path), 'r') as zf:
                         zf.extractall(path=temp_path)
                         print(f"[DEBUG] Extracted backup successfully")
-                except RuntimeError as e:
-                    if "Bad password" in str(e):
-                        error_msg = "Backup decryption failed: Incorrect password"
-                    else:
-                        error_msg = f"Extraction failed: {str(e)}"
+                except Exception as e:
+                    error_msg = f"Extraction failed: {str(e)}"
                     print(f"[ERROR] {error_msg}")
                     return False, error_msg
 
-                # Verify extraction: Check for critical files (.db or .auth)
+                # Simplified verification: Only check for .db
                 has_db = any(temp_path.glob("*.db"))
-                has_auth = (temp_path / ".auth").exists()
 
-                if not has_db and not has_auth:
-                    error_msg = "Backup is corrupted: No database (.db) or auth (.auth) files found in archive."
+                if not has_db:
+                    error_msg = "Backup is corrupted: No database (.db) file found in archive."
                     print(f"[ERROR] {error_msg}")
                     return False, error_msg
 
                 # Create safety backup of current data_root before replacing
                 safety_backup_path = None
-
-                # Identify what to back up (exclude the backups folder itself)
                 items_to_backup = [f for f in self.data_root.iterdir()
                                    if f.name != "backups" and f.name != ".gitkeep"]
 
                 if items_to_backup:
                     safety_backup_path = self.data_root.parent / f"data_safety_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                     print(f"[DEBUG] Creating safety backup at: {safety_backup_path}")
-
-                    # Create the safety backup folder ONLY if we are moving data
                     safety_backup_path.mkdir(parents=True, exist_ok=True)
 
                     for item in items_to_backup:
@@ -195,7 +166,7 @@ class BackupManager:
                         else:
                             shutil.copy2(item, safety_backup_path / item.name)
 
-                    # Now clear the data root
+                    # Clear data root
                     print(f"[DEBUG] Clearing current data root...")
                     for item in items_to_backup:
                         if item.is_dir():
@@ -203,7 +174,7 @@ class BackupManager:
                         else:
                             item.unlink()
 
-                # Move restored content into place
+                # Move restored content
                 print(f"[DEBUG] Moving restored content to data root...")
                 for item in temp_path.iterdir():
                     dest = self.data_root / item.name
@@ -214,7 +185,7 @@ class BackupManager:
 
                 print(f"[DEBUG] Data restored successfully")
 
-                # CLEANUP: Delete safety backup folder after successful restore
+                # Cleanup safety backup
                 if safety_backup_path and safety_backup_path.exists():
                     try:
                         shutil.rmtree(safety_backup_path)
@@ -237,36 +208,24 @@ class BackupManager:
             traceback.print_exc()
             return False, error_msg
 
-    def verify_backup(self, backup_path: Path, password: str) -> Tuple[bool, str]:
+    def verify_backup(self, backup_path: Path) -> Tuple[bool, str]:
         try:
-            with pyzipper.AESZipFile(str(backup_path), 'r') as zf:
-                zf.setpassword(password.encode('utf-8'))
+            with zipfile.ZipFile(str(backup_path), 'r') as zf:
                 file_list = zf.namelist()
-
-                # Check for critical files in the root of the archive
+                # Simplified: Only check for .db
                 has_db = any(f.endswith('.db') for f in file_list)
-                has_auth = '.auth' in file_list or any(f == '.auth' or f.startswith('./.auth') for f in file_list)
 
-                if not has_db and not has_auth:
-                    error_msg = "Backup verification failed: Missing critical files (.db or .auth)"
+                if not has_db:
+                    error_msg = "Backup verification failed: Missing critical database file (.db)."
                     print(f"[ERROR] {error_msg}")
                     return False, error_msg
 
                 print(f"[DEBUG] Backup verification passed: {len(file_list)} files")
                 return True, f"Backup is valid ({len(file_list)} files)"
 
-        except RuntimeError as e:
-            if "Bad password" in str(e):
-                error_msg = "Backup password verification failed: Incorrect password"
-            else:
-                error_msg = f"Backup verification failed: {str(e)}"
-            print(f"[ERROR] {error_msg}")
-            return False, error_msg
         except Exception as e:
             error_msg = f"Backup verification failed: {str(e)}"
             print(f"[ERROR] {error_msg}")
-            import traceback
-            traceback.print_exc()
             return False, error_msg
 
     def delete_backup(self, backup_path: Path) -> Tuple[bool, str]:
