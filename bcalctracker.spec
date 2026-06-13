@@ -1,12 +1,21 @@
-# -*- mode: python ; coding: utf-8 -*-
-
+# pyinstaller bcalctracker.spec
 
 a = Analysis(
     ['starttracker.py'],
     pathex=[],
     binaries=[],
-    datas=[('datamenu', 'datamenu')],
-    hiddenimports=['PIL._tkinter_finder', 'tkinter.ttk', 'matplotlib.backends.backend_tkagg'],
+    datas=[
+        ('guiform', 'guiform'),      # Bundle the guiform package
+        ('datamenu', 'datamenu'),    # Bundle the datamenu folder
+        ('guiform/bcalcnotepadicon.png', 'guiform') # Explicitly bundle icon if it's there
+    ],
+    hiddenimports=[
+        'PIL._tkinter_finder',
+        'PIL.ImageTk',
+        'matplotlib.backends.backend_tkagg',
+        'ttkbootstrap',
+        'pandas'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -14,6 +23,7 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -35,5 +45,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='guiform/bcalctrackicon.png',
+    icon=['guiform/bcalcnotepadicon.png'],
 )

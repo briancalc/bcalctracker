@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bcalctracker"
+version = "1.0"
+description = "Open source firearm management tracker"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Brian Calc"}
+]
+license = "GPL-3.0-or-later"
+keywords = ["firearms", "ammunition", "optics", "ballistics"]
+dependencies = [
+    "charset-normalizer",
+    "contourpy",
+    "cycler",
+    "fonttools",
+    "kiwisolver",
+    "matplotlib",
+    "mplcursors",
+    "numpy",
+    "packaging",
+    "pandas",
+    "pillow",
+    "pyparsing",
+    "python-dateutil",
+    "reportlab",
+    "six",
+    "ttkbootstrap",
+]
+
+[project.urls]
+Homepage = "https://github.com/briancalc/bcalctracker"
+Repository = "https://github.com/briancalc/bcalctracker"
+
+[project.scripts]
+bcalctracker = "starttracker:main"
+
+[tool.setuptools]
+# List all Python modules (files without packages)
+py-modules = [
+    "starttracker",
+    "database",
+    "config",
+    "data_loaders",
+    "backup_restore",
+    "constants"
+]
+
+# List all packages (directories with __init__.py)
+packages = ["guiform"]

@@ -5,3 +5,4 @@ venvtracker/
 datadb/
 dist/
 *.egg-info/
+build/

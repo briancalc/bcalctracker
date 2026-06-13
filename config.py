@@ -24,18 +24,29 @@ from data_loaders import (
 APP_NAME = "Bcalc Firearm Management"
 VERSION = "v1.0"
 
-# --- RESTORED PATH LOGIC ---
+# --- UPDATED PATH LOGIC ---
 
-# 1. Define Project Root (Where starttracker.py lives)
-SCRIPT_DIR = Path(__file__).resolve().parent
+def get_app_root():
+    """Get the root directory of the application."""
+    # Check if running in a PyInstaller bundle
+    if getattr(sys, 'frozen', False):
+        # Bundle mode: __file__ might be the temp extractor, but sys.executable is the EXE
+        application_path = sys.executable
+    else:
+        # Normal dev mode: script is in the project folder
+        application_path = __file__
+
+    return Path(application_path).resolve().parent
+
+# 1. Define Project Root
+PROJECT_ROOT = get_app_root()
 
 # 2. Define Data Directory INSIDE the project root
 # This creates: <Project Folder>/datadb/
-DATA_DIR = SCRIPT_DIR / "datadb"
+DATA_DIR = PROJECT_ROOT / "datadb"
 
 # 3. Define Backup Directory INSIDE the project root
-# This creates: <Project Folder>/backups/
-BACKUP_DIR = SCRIPT_DIR / "backups"
+BACKUP_DIR = PROJECT_ROOT / "backups"
 
 # 4. Define Database Path
 DB_PATH = DATA_DIR / "firearms.db"
@@ -43,6 +54,10 @@ DB_PATH = DATA_DIR / "firearms.db"
 # 5. Create directories if they don't exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+
+print(f"[DEBUG] App Root: {PROJECT_ROOT}")
+print(f"[DEBUG] Data Dir: {DATA_DIR}")
+print(f"[DEBUG] DB Path: {DB_PATH}")
 
 # Business Logic Defaults
 PERFORMANCE_RATINGS = ["Bad", "Adequate", "Good", "Great"]
