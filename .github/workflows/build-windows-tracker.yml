@@ -1,53 +1,27 @@
-name: Build bcalctracker Windows EXE
+name: Build Windows Executable
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   push:
     tags:
       - 'v*'
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4.2.0
-
-      - name: Set up Miniconda
-        uses: conda-incubator/setup-miniconda@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          auto-activate-base: true
-          python-version: '3.11'
-
-      - name: Install build tools
-        run: |
-          choco install visualstudio2022-workload-vctools -y
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r requirements.txt
-
-      - name: Build with PyInstaller
-        run: |
-          pyinstaller bcalctracker.spec
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          python-version: '3.9'
+      - run: pip install -r requirements.txt pyinstaller
+      - run: pyinstaller bcalctracker.spec
+      - uses: actions/upload-artifact@v4
         with:
           name: bcalctracker-windows
           path: dist/bcalctracker.exe
-
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: dist/bcalctracker.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
 
