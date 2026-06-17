@@ -128,8 +128,26 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
 
+        .other-apps-buttons {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
 
-        /* Main Container */
+        .other-apps-buttons .button {
+            color: #ba7800;
+            border-color: #ba7800;
+        }
+
+        .other-apps-buttons .button:hover {
+            background-color: #ba7800;
+            color: white;
+        }
+
+          /* Main Container */
         .container {
             max-width: 1000px;
             margin: 60px auto;
@@ -530,8 +548,8 @@
             <h1>Bcalc Firearm Managment App</h1>
             <p>free, open-source firearm, optic, and ammunition tracker</p>
             <div class="cta-buttons">
-                <a href="https://github.com/briancalc/bcalctracker/releases/tag/v1.8" class="button">Download for Windows</a>
-                <a href="https://github.com/briancalc/bcalctracker/releases/tag/v1.0" class="button button-secondary">Download for Linux</a>
+                <a href="https://github.com/briancalc/bcalctracker/releases/tag/v1.9" class="button">Download for Windows</a>
+                <a href="https://github.com/briancalc/bcalctracker/releases/tag/v1.9" class="button button-secondary">Download for Linux</a>
             </div>
         </div>
     </section>
@@ -715,6 +733,15 @@
     });
     });
     </script>
+
+     <!-- Other Apps Section -->
+    <div class="container">
+        <h2>Other Applications</h2>
+        <div class="other-apps-buttons">
+            <a href="https://briancalc.github.io/bcalcballistics/" class="button">Ballistics Calculator</a>
+            <a href="https://briancalc.github.io/bcalcrecoil/" class="button">Recoil Calculator</a>
+        </div>
+    </div>
 
 </body>
 </html>
